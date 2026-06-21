@@ -66,9 +66,9 @@ public class AnnotationPipeline {
 
     private static final Logger LOG = LoggerFactory.getLogger(AnnotationPipeline.class);
 
-    private static void annotateJob(String[] args, String filename, String outputFilename, String outputFormat, String isoformOverride,
-                                    String errorReportLocation, boolean replace, String postIntervalSize, String stripMatchingBases,
-                                    Boolean ignoreOriginalGenomicLocation, Boolean addOriginalGenomicLocation, Boolean noteColumn) throws Exception {
+    private static void annotateJob(String[] args, String filename, String outputFilename, String outputFormat, String isoformOverride, String replaceSymbolEntrez,
+                                    String errorReportLocation, String postIntervalSize, String stripMatchingBases,
+                                    Boolean ignoreOriginalGenomicLocation, Boolean addOriginalGenomicLocation, Boolean noteColumn, Boolean extendedMode) throws Exception {
         SpringApplication app = new SpringApplication(AnnotationPipeline.class);
         app.setWebApplicationType(WebApplicationType.NONE);
         app.setAllowBeanDefinitionOverriding(Boolean.TRUE);
@@ -79,16 +79,19 @@ public class AnnotationPipeline {
         addJobParameterIfValueIsNotNull(jobParametersBuilder, "filename", filename);
         addJobParameterIfValueIsNotNull(jobParametersBuilder, "outputFilename", outputFilename);
         addJobParameterIfValueIsNotNull(jobParametersBuilder, "outputFormat", outputFormat);
-        addJobParameterIfValueIsNotNull(jobParametersBuilder, "replace", String.valueOf(replace));
         addJobParameterIfValueIsNotNull(jobParametersBuilder, "isoformOverride", isoformOverride);
+        addJobParameterIfValueIsNotNull(jobParametersBuilder, "replaceSymbolEntrez", replaceSymbolEntrez);
         addJobParameterIfValueIsNotNull(jobParametersBuilder, "errorReportLocation", errorReportLocation);
         addJobParameterIfValueIsNotNull(jobParametersBuilder, "postIntervalSize", postIntervalSize);
         addJobParameterIfValueIsNotNull(jobParametersBuilder, "stripMatchingBases", stripMatchingBases);
         addJobParameterIfValueIsNotNull(jobParametersBuilder, "ignoreOriginalGenomicLocation", String.valueOf(ignoreOriginalGenomicLocation));
-        addJobParameterIfValueIsNotNull(jobParametersBuilder, "ignoreOriginalGenomicLocation", String.valueOf(addOriginalGenomicLocation));
+        addJobParameterIfValueIsNotNull(jobParametersBuilder, "addOriginalGenomicLocation", String.valueOf(addOriginalGenomicLocation));
         addJobParameterIfValueIsNotNull(jobParametersBuilder, "noteColumn", String.valueOf(noteColumn));
+        addJobParameterIfValueIsNotNull(jobParametersBuilder, "extendedMode", String.valueOf(extendedMode));
         JobParameters jobParameters = jobParametersBuilder.toJobParameters();
+        Instant annotationStart = Instant.now();
         JobExecution jobExecution = jobLauncher.run(annotationJob, jobParameters);
+        System.out.println(" ANNOTATION_TIME: " + Duration.between(annotationStart, Instant.now()).getSeconds() + " secs.");
         if (!jobExecution.getExitStatus().equals(ExitStatus.COMPLETED)) {
             System.exit(2);
         }
@@ -257,6 +260,13 @@ public class AnnotationPipeline {
                 throw new AnnotationFailedException("Isoform override not valid. Options: 'mskcc' or 'uniprot'.");
             }
         }
+        if (subcommand.hasOption("replace-symbol-entrez")) {
+            String replaceSymbolEntrez = subcommand.getOptionValue("replace-symbol-entrez");
+            if (!(replaceSymbolEntrez.equals("true") || replaceSymbolEntrez.equals("false") || replaceSymbolEntrez.equals(""))) {
+                throw new AnnotationFailedException("--replace-symbol-entrez not valid. Options: 'true' if you perfer to replace hugo gene symbol and entrenz id, set 'false' if you prefer to keep original values.");
+            }
+        }
+
         if (subcommand.hasOption("strip-matching-bases")) {
             String stripMatchingBases = subcommand.getOptionValue("strip-matching-bases");
             if (!(stripMatchingBases.equals("first") || stripMatchingBases.equals("none") || stripMatchingBases.equals("all"))) {
@@ -264,9 +274,9 @@ public class AnnotationPipeline {
             }
         }
         try {
-            annotateJob(args, subcommand.getOptionValue("filename"), subcommand.getOptionValue("output-filename"), outputFormat, subcommand.getOptionValue("isoform-override"),
+            annotateJob(args, subcommand.getOptionValue("filename"), subcommand.getOptionValue("output-filename"), outputFormat, subcommand.getOptionValue("isoform-override"), subcommand.getOptionValue("replace-symbol-entrez", "true"),
                     subcommand.getOptionValue("error-report-location", ""),
-                    true, subcommand.getOptionValue("post-interval-size", "100"), subcommand.getOptionValue("strip-matching-bases", "all"), subcommand.hasOption("ignore-original-genomic-location"), subcommand.hasOption("add-original-genomic-location"), true);
+                    subcommand.getOptionValue("post-interval-size", "100"), subcommand.getOptionValue("strip-matching-bases", "all"), subcommand.hasOption("ignore-original-genomic-location"), subcommand.hasOption("add-original-genomic-location"), true, subcommand.hasOption("mode") && "extended".equals(subcommand.getOptionValue("mode")));
             // When you change the default value of post-interval-size, do not forget to update MutationRecordReader.postIntervalSize accordingly
             // "replace-symbol-entrez" is true by default
             // notecolumn is set to true, can reset to noteColumn parameter if have grouped arguments in the future

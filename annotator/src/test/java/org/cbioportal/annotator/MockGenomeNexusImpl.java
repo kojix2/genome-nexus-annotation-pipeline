@@ -140,37 +140,37 @@ public class MockGenomeNexusImpl extends GenomeNexusImpl {
     public AnnotatedRecord makeMockAnnotatedRecord(MutationRecord record) {
         VariantAnnotation gnResponse = null;
         try {
-            gnResponse = makeMockGenomeNexusResponse(mockGenomeNexusHgvsResponseMap.get(parseGenomicLocationString(record)));
+            gnResponse = makeMockGenomeNexusResponse(mockGenomeNexusHgvsResponseMap.get(parseGenomicLocationString(record, false)));
         }
         catch (IOException e) {
             throw new RuntimeException(e);
         }
 
-        return convertResponseToAnnotatedRecord(gnResponse, record, REPLACE, stripMatchingBases, true, false, false);
+        return convertResponseToAnnotatedRecord(gnResponse, record, REPLACE, stripMatchingBases, true, false, false, false);
     }
 
     public AnnotatedRecord makeMockPOSTAnnotatedRecord(MutationRecord record) {
         VariantAnnotation gnResponse = null;
         try {
-            gnResponse = makeMockGenomeNexusResponse(mockGenomeNexusHgvsPOSTResponseMap.get(parseGenomicLocationString(record)));
+            gnResponse = makeMockGenomeNexusResponse(mockGenomeNexusHgvsPOSTResponseMap.get(parseGenomicLocationString(record, false)));
         }
         catch (IOException e) {
             throw new RuntimeException(e);
         }
 
-        return convertResponseToAnnotatedRecord(gnResponse, record, REPLACE, stripMatchingBases, true, false, false);
+        return convertResponseToAnnotatedRecord(gnResponse, record, REPLACE, stripMatchingBases, true, false, false, false);
     }
 
     public AnnotatedRecord makeMockMyVariantInfoAnnotatedRecord(MutationRecord record) {
         VariantAnnotation gnResponse = null;
         try {
-            gnResponse = makeMockGenomeNexusResponse(mockGenomeNexusMyVariantInfoResponseMap.get(parseGenomicLocationString(record)));
+            gnResponse = makeMockGenomeNexusResponse(mockGenomeNexusMyVariantInfoResponseMap.get(parseGenomicLocationString(record, false)));
         }
         catch (IOException e) {
             throw new RuntimeException(e);
         }
 
-        return convertResponseToAnnotatedRecord(gnResponse, record, REPLACE, stripMatchingBases, true, false, false);
+        return convertResponseToAnnotatedRecord(gnResponse, record, REPLACE, stripMatchingBases, true, false, false, false);
     }
 
     private VariantAnnotation makeMockGenomeNexusResponse(String mockReturnJsonString) throws IOException {

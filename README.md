@@ -36,15 +36,18 @@ java -jar annotationPipeline/target/annotationPipeline-*.jar \
 
 To output error reporting to a file, supply the `-e` option a location for the file to be saved. By running the jar without any arguments or by providing the optional parameter `-h` you can view the full usage statement. 
 
+> [!TIP]
+> `mskcc` is the preferred isoform override, while `uniprot` is a legacy option 
+
 ## Annotate with Docker
 Genome Nexus Annotation Pipeline is available on DockerHub: https://hub.docker.com/r/genomenexus/gn-annotation-pipeline.
 
 #### Usage instruction
 ```
-docker pull genomenexus/gn-annotation-pipeline:master 
+docker pull genomenexus/gn-annotation-pipeline:latest 
 ```
 ```
-docker run -v ${PWD}:/wd genomenexus/gn-annotation-pipeline:master java -jar annotationPipeline.jar --filename /wd/input.txt  --output-filename /wd/output.txt
+docker run -v ${PWD}:/wd genomenexus/gn-annotation-pipeline:latest java -jar annotationPipeline.jar --filename /wd/input.txt  --output-filename /wd/output.txt
 ```
 - `-v ${PWD}:/wd`: This option maps the current working directory to a volume within the Docker container at the path `/wd`. This makes it possible for files in the host directory to be accessed and modified between container and host.
 - `--filename /wd/input.txt`: This option specifies the input file location at `/wd/input.txt`, which should be under the same directory as output file.
@@ -62,13 +65,15 @@ docker run -v ${PWD}:/wd genomenexus/gn-annotation-pipeline:master java -jar ann
 | `-f` | `--filename` |Mutation filename|
 | `-o` | `--output-filename` | Output filename (including path)|
 | `-t` | `--output-format`  | extended, minimal or a file path which includes output format (FORMAT EXAMPLE: Chromosome,Hugo_Symbol,Entrez_Gene_Id,Center,NCBI_Build)|
-| `-i` | `--isoform-override` | Isoform Overrides. Options: mskcc or uniprot|
+| `-i` | `--isoform-override` | Isoform Overrides. Options: mskcc (preferred) or uniprot (legacy)|
 | `-e` | `--error-report-location` | Error report filename (including path)|
 | `-r` | `--replace-symbol-entrez` | Replace gene symbols and entrez id with what is provided by annotator, this is enabled by default|
 | `-p` | `--post-interval-size` | Number of records to make POST requests to Genome Nexus with at a time |
 | `-s` | `--strip-matching-bases` | Strip matching allele bases. Options: first, all, none. For example: AAC/AAT, strip-off first: AC/AT, strip-off all: C/T, strip-off none: AAC/AAT  |
-| `-a` | `--add-original-genomic-location` | Add original genomic location data columns into the output, name columns with prefix 'IGNORE_Genome_Nexus_Original_'). This would be useful if saving a reference of original input is needed and won't be changed in any condition|
+| `-a` | `--add-original-genomic-location` | Add original genomic location data columns into the output, name columns with prefix 'IGNORE_Genome_Nexus_Original_'. This would be useful if saving a reference of original input is needed and won't be changed in any condition|
 | `-d` | `--ignore-original-location` | Genome-nexus-annotation-pipeline reads original genomic location info as input by default, if not existing, reading from normal genomic location info columns. Adding `-d` ignores original genomic location info columns (columns with prefix 'IGNORE_Genome_Nexus_Original_') and only use whatever in normal genomic location info columns. This would be helpful if you'd like to stick with current genomic location info columns.|
+| `-n` | `--note-column` | Add 'Genomic Location Explanation' column for variants that have altered genomic location|
+| `-m` | `--mode` | Mode of annotation (currently only accepts `extended` to include `Additional_Transcripts` column)|
 
 ### Reference Genome
 The Genome Nexus Annotation Pipeline supports two versions of the human genome reference assembly: 
@@ -82,7 +87,7 @@ The Genome Nexus Annotation Pipeline supports two versions of the human genome r
 If you want to annotate with **GRCh38**, please set the `GENOMENEXUS_BASE` environment variable to `https://grch38.genomenexus.org`. Here's an example of how to do this:
 
 ```
-docker run -e GENOMENEXUS_BASE=https://grch38.genomenexus.org -v ${PWD}:/wd genomenexus/gn-annotation-pipeline:master --filename /wd/input.txt --output-filename /wd/output.txt --isoform-override uniprot
+docker run -e GENOMENEXUS_BASE=https://grch38.genomenexus.org -v ${PWD}:/wd genomenexus/gn-annotation-pipeline:latest java -jar annotationPipeline.jar --filename /wd/input.txt --output-filename /wd/output.txt --isoform-override mskcc
 ```
 
 ### Annotation fields
@@ -133,6 +138,7 @@ docker run -e GENOMENEXUS_BASE=https://grch38.genomenexus.org -v ${PWD}:/wd geno
 |Protein_position|VEP||
 |Codons|VEP||
 |Exon_Number|VEP||
+|Additional_Transcripts||Contains a semicolon-separated list of alternate transcripts. Each entry is a comma-separated list of: Transcript ID, Hugo Gene Symbol, HGVSp Short, HGVSc, Variant Classification. **Requires `-m extended` / `--mode extended` flag**|
 |gnomAD_AF|myvariant.info|Need to add "my_variant_info" in "genomenexus.enrichment_fields"|
 |gnomAD_AFR_AF|myvariant.info|Need to add "my_variant_info" in "genomenexus.enrichment_fields"|
 |gnomAD_AMR_AF|myvariant.info|Need to add "my_variant_info" in "genomenexus.enrichment_fields"|
@@ -142,10 +148,11 @@ docker run -e GENOMENEXUS_BASE=https://grch38.genomenexus.org -v ${PWD}:/wd geno
 |gnomAD_NFE_AF|myvariant.info|Need to add "my_variant_info" in "genomenexus.enrichment_fields"|
 |gnomAD_OTH_AF|myvariant.info|Need to add "my_variant_info" in "genomenexus.enrichment_fields"|
 |gnomAD_SAS_AF|myvariant.info|Need to add "my_variant_info" in "genomenexus.enrichment_fields"|
-|MA:FIS|Mutation Assessor|Need to add "mutation_assessor" in "genomenexus.enrichment_fields"|
-|MA:FImpact|Mutation Assessor|Need to add "mutation_assessor" in genomenexus.enrichment_fields"|
-|MA:link.MSA|Mutation Assessor|Need to add "mutation_assessor" in "genomenexus.enrichment_fields"|
-|MA:link.PDB|Mutation Assessor|Need to add "mutation_assessor" in "genomenexus.enrichment_fields"|
+|MutationAssessor_FunctionalImpactPrediction|Mutation Assessor|Need to add "mutation_assessor" in "genomenexus.enrichment_fields"|
+|MutationAssessor_FunctionalImpactScore|Mutation Assessor|Need to add "mutation_assessor" in genomenexus.enrichment_fields"|
+|MutationAssessor_MSA|Mutation Assessor|Need to add "mutation_assessor" in genomenexus.enrichment_fields"|
+|MutationAssessor_MAV|Mutation Assessor|Need to add "mutation_assessor" in genomenexus.enrichment_fields"|
+|MutationAssessor_SV|Mutation Assessor|Need to add "mutation_assessor" in genomenexus.enrichment_fields"|
 |Polyphen_Prediction|Polyphen|Need to add "polyphen" in "genomenexus.enrichment_fields"|
 |Polyphen_Score|Polyphen|Need to add "polyphen" in "genomenexus.enrichment_fields"|
 |SIFT_Prediction|SIFT|Need to add "sift" in "genomenexus.enrichment_fields"|
@@ -175,8 +182,8 @@ java -Dgenomenexus.enrichment_fields=annotation_summary,my_variant_info \
     -jar annotationPipeline/target/annotationPipeline-*.jar \ 
     -r \ 
     --filename test/data/minimal_example.in.txt \ 
-    --output-filename test/data/minimal_example.out.uniprot.txt \ 
-    --isoform-override uniprot
+    --output-filename test/data/minimal_example.out.mskcc.txt \ 
+    --isoform-override mskcc
 ```
 ##### Available enrichment fields:
 - annotation_summary:
@@ -186,7 +193,7 @@ java -Dgenomenexus.enrichment_fields=annotation_summary,my_variant_info \
 - polyphen
 - sift
 - mutation_assessor
-    - 'mutation_assessor' provides V3 version annotation from Mutation Assessor, which is currently stored in Genome Nexus database
+    - 'mutation_assessor' provides V4 version annotation from Mutation Assessor, which is currently stored in Genome Nexus database
 - nucleotide_context
 - oncokb:
     - 'oncokb' provides annotations of the biological consequences and clinical implications from OncoKB website. OncoKB token is required (see more information from: [https://www.oncokb.org/apiAccess](https://www.oncokb.org/apiAccess)). Please also provide your token in `-Doncokb.token=abc123` command line parameter, or directly add `oncokb.token=abc123`in the `application.properties`. No OncoKB annotation columns will be added if no valid token is provided
@@ -196,14 +203,14 @@ java -Dgenomenexus.enrichment_fields=annotation_summary,my_variant_info \
 For an example minimal input file see
 [test/data/minimal_example.in.txt](test/data/minimal_example.in.txt) and
 corresponding output
-[test/data/minimal_example.out.uniprot.txt](test/data/minimal_example.out.uniprot.txt).
+[test/data/minimal_example.out.mskcc.txt](test/data/minimal_example.out.mskcc.txt).
 The output file was generated with:
 ```
 $JAVA_HOME/bin/java -jar annotationPipeline/target/annotationPipeline-*.jar \
     -r \
     --filename test/data/minimal_example.in.txt  \
-    --output-filename test/data/minimal_example.out.uniprot.txt \
-    --isoform-override uniprot
+    --output-filename test/data/minimal_example.out.mskcc.txt \
+    --isoform-override mskcc
 ```
 
 ## Direct Database Annotation

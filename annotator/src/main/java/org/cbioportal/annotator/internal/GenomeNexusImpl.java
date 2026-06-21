@@ -36,9 +36,12 @@ import java.time.Duration;
 import java.time.Instant;
 import java.time.temporal.Temporal;
 import java.util.*;
+import java.util.stream.Collectors;
+
 import org.mskcc.cbio.maf.MafUtil;
 
 import org.apache.commons.lang3.StringUtils;
+import org.apache.commons.logging.Log;
 import org.cbioportal.annotator.Annotator;
 import org.cbioportal.annotator.GenomeNexusAnnotationFailureException;
 import org.cbioportal.models.AnnotatedRecord;
@@ -55,8 +58,10 @@ import org.springframework.context.annotation.Configuration;
 import org.springframework.http.converter.HttpMessageNotReadableException;
 import org.springframework.web.client.HttpClientErrorException;
 import org.springframework.web.client.HttpServerErrorException;
+
 import com.google.common.base.Strings;
 import com.google.gson.Gson;
+
 import org.cbioportal.annotator.util.AnnotationUtil;
 
 /**
@@ -141,7 +146,7 @@ public class GenomeNexusImpl implements Annotator {
     }
 
     @Override
-    public AnnotatedRecord annotateRecord(MutationRecord mRecord, boolean replace, String isoformOverridesSource, boolean reannotate, String stripMatchingBases, Boolean ignoreOriginalGenomicLocation, Boolean addOriginalGenomicLocation, Boolean noteColumn)
+    public AnnotatedRecord annotateRecord(MutationRecord mRecord, boolean replace, String isoformOverridesSource, boolean reannotate, String stripMatchingBases, Boolean ignoreOriginalGenomicLocation, Boolean addOriginalGenomicLocation, Boolean noteColumn, Boolean extendedMode)
             throws GenomeNexusAnnotationFailureException
     {
         AnnotatedRecord annotatedRecord = new AnnotatedRecord(mRecord);
@@ -168,10 +173,10 @@ public class GenomeNexusImpl implements Annotator {
             annotatedRecord.setErrorMessage(gnResponse != null && gnResponse.getErrorMessage() != null ? gnResponse.getErrorMessage() : "");
             throw new GenomeNexusAnnotationFailureException("Genome Nexus failed to annotate: " + gnResponse.getVariant() + ". " + (gnResponse.getErrorMessage() != null ? gnResponse.getErrorMessage() : ""));
         }
-        return convertResponseToAnnotatedRecord(gnResponse, mRecord, replace, stripMatchingBases, ignoreOriginalGenomicLocation, addOriginalGenomicLocation, noteColumn);
+        return convertResponseToAnnotatedRecord(gnResponse, mRecord, replace, stripMatchingBases, ignoreOriginalGenomicLocation, addOriginalGenomicLocation, noteColumn, extendedMode);
     }
 
-    public List<AnnotatedRecord> annotateRecordsUsingGET(AnnotationSummaryStatistics summaryStatistics, List<MutationRecord> mutationRecords, String isoformOverridesSource, Boolean replace, boolean reannotate, String stripMatchingBases, Boolean ignoreOriginalGenomicLocation, Boolean addOriginalGenomicLocation, Boolean noteColumn) {
+    public List<AnnotatedRecord> annotateRecordsUsingGET(AnnotationSummaryStatistics summaryStatistics, List<MutationRecord> mutationRecords, String isoformOverridesSource, Boolean replace, boolean reannotate, String stripMatchingBases, Boolean ignoreOriginalGenomicLocation, Boolean addOriginalGenomicLocation, Boolean noteColumn, Boolean extendedMode) {
         List<AnnotatedRecord> annotatedRecordsList = new ArrayList<>();
         int totalVariantsToAnnotateCount = mutationRecords.size();
         int annotatedVariantsCount = 0;
@@ -185,7 +190,7 @@ public class GenomeNexusImpl implements Annotator {
             AnnotatedRecord annotatedRecord = new AnnotatedRecord(record);
             Instant startTime = Instant.now();
             try {
-                annotatedRecord = annotateRecord(record, replace, isoformOverridesSource, reannotate, stripMatchingBases, ignoreOriginalGenomicLocation, addOriginalGenomicLocation, noteColumn);
+                annotatedRecord = annotateRecord(record, replace, isoformOverridesSource, reannotate, stripMatchingBases, ignoreOriginalGenomicLocation, addOriginalGenomicLocation, noteColumn, extendedMode);
                 annotatedRecord.setANNOTATION_STATUS("SUCCESS");
             }
             catch (HttpServerErrorException ex) {
@@ -242,7 +247,7 @@ public class GenomeNexusImpl implements Annotator {
         return apiClient;
     }
 
-    public AnnotatedRecord convertResponseToAnnotatedRecord(VariantAnnotation gnResponse, MutationRecord mRecord, boolean replace, String stripMatchingBases, Boolean ignoreOriginalGenomicLocation, Boolean addOriginalGenomicLocation, Boolean noteColumn) {
+    public AnnotatedRecord convertResponseToAnnotatedRecord(VariantAnnotation gnResponse, MutationRecord mRecord, boolean replace, String stripMatchingBases, Boolean ignoreOriginalGenomicLocation, Boolean addOriginalGenomicLocation, Boolean noteColumn, Boolean extendedMode) {
         String genomeNexusOriginalChromosome = annotationUtil.getGenomeNexusOriginalChromosome(mRecord);
         String genomeNexusOriginalStartPosition = annotationUtil.getGenomeNexusOriginalStartPosition(mRecord);
         String genomeNexusOriginalEndPosition = annotationUtil.getGenomeNexusOriginalEndPosition(mRecord);
@@ -367,7 +372,7 @@ public class GenomeNexusImpl implements Annotator {
                 resolvedStartPosition,
                 annotationUtil.resolveEnd(gnResponse, mRecord),
                 annotationUtil.resolveStrandSign(gnResponse, mRecord),
-                annotationUtil.resolveVariantClassification(canonicalTranscript, mRecord),
+                annotationUtil.resolveVariantClassification(gnResponse, canonicalTranscript, mRecord),
                 annotationUtil.resolveVariantType(gnResponse),
                 resolvedReferenceAllele,
                 resolvedTumorSeqAllele1,
@@ -406,7 +411,7 @@ public class GenomeNexusImpl implements Annotator {
                 annotationUtil.resolveProteinPosEnd(canonicalTranscript),
                 annotationUtil.resolveCodonChange(canonicalTranscript),
                 annotationUtil.resolveHotspot(),
-                annotationUtil.resolveConsequence(canonicalTranscript),
+                annotationUtil.resolveConsequence(gnResponse, canonicalTranscript),
                 annotationUtil.resolveProteinPosition(canonicalTranscript, mRecord),
                 annotationUtil.resolveExon(canonicalTranscript),
                 mRecord.getAdditionalProperties());
@@ -415,6 +420,9 @@ public class GenomeNexusImpl implements Annotator {
         }
         if (noteColumn) {
             annotatedRecord.setGenomicLocationExplanation(gnResponse.getGenomicLocationExplanation() != null ? gnResponse.getGenomicLocationExplanation() : "");
+        }
+        if (extendedMode) {
+            annotatedRecord.setAdditionalTranscripts(annotationUtil.resolveAdditionalTranscripts(gnResponse, canonicalTranscript));
         }
 
         if (enrichmentFields.contains("my_variant_info")) {
@@ -446,8 +454,9 @@ public class GenomeNexusImpl implements Annotator {
             annotatedRecord.setMutationAssessorFields(
                     annotationUtil.resolveMaFunctionalImpact(gnResponse),
                     annotationUtil.resolveMaFunctionalImpactScore(gnResponse),
-                    annotationUtil.resolveMaLinkMSA(gnResponse),
-                    annotationUtil.resolveMaLinkPDB(gnResponse));
+                    annotationUtil.resolveMaMSA(gnResponse),
+                    annotationUtil.resolveMaMAV(gnResponse),
+                    annotationUtil.resolveMaSV(gnResponse));
         }
         if (enrichmentFields.contains("nucleotide_context")) {
             annotatedRecord.setNucleotideContextFields(
@@ -492,12 +501,11 @@ public class GenomeNexusImpl implements Annotator {
 
     @Override
     public String getUrlForRecord(MutationRecord record, String isoformOverridesSource) {
-        String genomicLocation = parseGenomicLocationString(record);
+        String genomicLocation = parseGenomicLocationString(record, false);
         // TODO this is now handled by the API client, we don't really need this (keeping for logging purposes only)
         return genomeNexusBaseUrl + "annotation/genomic/" + genomicLocation + "?" +
                 isoformQueryParameter + "=" + isoformOverridesSource + "&fields=" + String.join(",", queryFields());
     }
-
 
     private AlleleFrequency getGnomadAlleleFrequency(VariantAnnotation gnResponse) {
         MyVariantInfoAnnotation myVariantInfoAnnotation = gnResponse.getMyVariantInfo();
@@ -557,24 +565,17 @@ public class GenomeNexusImpl implements Annotator {
     
     public String parseGenomicLocationString(MutationRecord record, Boolean ignoreOriginalGenomicLocation) {
         GenomicLocation genomicLocation = parseGenomicLocationFromRecord(record, ignoreOriginalGenomicLocation);
-        return StringUtils.join(new String[]{
-            genomicLocation.getChromosome(),
-            genomicLocation.getStart() != null ? genomicLocation.getStart().toString() : "",
-            genomicLocation.getEnd() != null ? genomicLocation.getEnd().toString() : "",
-            genomicLocation.getReferenceAllele(),
-            genomicLocation.getVariantAllele()},
-                ",");
+        return getGenomicLocationString(genomicLocation);
     }
 
-    public String parseGenomicLocationString(MutationRecord record) {
-        GenomicLocation genomicLocation = parseGenomicLocationFromRecord(record, false);
-        return StringUtils.join(new String[]{
-            genomicLocation.getChromosome(),
-            genomicLocation.getStart() != null ? genomicLocation.getStart().toString() : "",
-            genomicLocation.getEnd() != null ? genomicLocation.getEnd().toString() : "",
-            genomicLocation.getReferenceAllele(),
-            genomicLocation.getVariantAllele()},
-                ",");
+    private String getGenomicLocationString(GenomicLocation location) {
+        return String.join(",",
+            location.getChromosome(),
+            String.valueOf(location.getStart() != null ? location.getStart() : ""),
+            String.valueOf(location.getEnd() != null ? location.getEnd() : ""),
+            location.getReferenceAllele(),
+            location.getVariantAllele()
+        );
     }
 
     private TranscriptConsequenceSummary getCanonicalTranscript(VariantAnnotation gnResponse) {
@@ -589,7 +590,6 @@ public class GenomeNexusImpl implements Annotator {
         }
     }
 
-
     private static List<String> initNullClassifications() {
         List<String> hgvspNullClassifications = new ArrayList<>();
         hgvspNullClassifications.add("3'UTR");
@@ -603,96 +603,155 @@ public class GenomeNexusImpl implements Annotator {
     }
 
     @Override
-    public List<AnnotatedRecord> getAnnotatedRecordsUsingPOST(AnnotationSummaryStatistics summaryStatistics, List<MutationRecord> mutationRecords, String isoformOverridesSource, Boolean replace, boolean reannotate, String stripMatchingBases, Boolean ignoreOriginalGenomicLocation, Boolean addOriginalGenomicLocation, Boolean noteColumn) {
+    public List<AnnotatedRecord> getAnnotatedRecordsUsingPOST(AnnotationSummaryStatistics summaryStatistics, List<MutationRecord> mutationRecords, String isoformOverridesSource, Boolean replace, boolean reannotate, String stripMatchingBases, Boolean ignoreOriginalGenomicLocation, Boolean addOriginalGenomicLocation, Boolean noteColumn, Boolean extendedMode) {
         // this will send everything at once
-        return getAnnotatedRecordsUsingPOST(summaryStatistics, mutationRecords, isoformOverridesSource, replace, mutationRecords.size(), reannotate, stripMatchingBases, ignoreOriginalGenomicLocation, addOriginalGenomicLocation, noteColumn);
+        return getAnnotatedRecordsUsingPOST(summaryStatistics, mutationRecords, isoformOverridesSource, replace, mutationRecords.size(), reannotate, stripMatchingBases, ignoreOriginalGenomicLocation, addOriginalGenomicLocation, noteColumn, extendedMode);
     }
 
-    @Override
-    public List<AnnotatedRecord> getAnnotatedRecordsUsingPOST(AnnotationSummaryStatistics summaryStatistics, List<MutationRecord> mutationRecords, String isoformOverridesSource, Boolean replace, Integer postIntervalSize, boolean reannotate, String stripMatchingBases, Boolean ignoreOriginalGenomicLocation, Boolean addOriginalGenomicLocation, Boolean noteColumn) {
-        // construct list of genomic location objects to pass to api client
-        // TODO use SortedSet (or at least Set) instead?  Do we anticipate a lot of redundancy? Probably quite a bit.
-        // Maybe test which is faster with a large study
-        List<GenomicLocation> genomicLocations = new ArrayList<>();
-        for (MutationRecord record : mutationRecords) {
-            if(reannotate || annotationNeeded(record)) {
-                genomicLocations.add(parseGenomicLocationFromRecord(record, ignoreOriginalGenomicLocation));
+   @Override
+    public List<AnnotatedRecord> getAnnotatedRecordsUsingPOST(
+        AnnotationSummaryStatistics summaryStatistics,
+        List<MutationRecord> mutationRecords,
+        String isoformOverridesSource,
+        Boolean replace,
+        Integer postIntervalSize,
+        boolean reannotate,
+        String stripMatchingBases,
+        Boolean ignoreOriginalGenomicLocation,
+        Boolean addOriginalGenomicLocation,
+        Boolean noteColumn,
+        Boolean extendedMode
+    ) {
+        // Create mapping for records that need annotation
+        List<MutationRecord> recordsToAnnotate = new ArrayList<>();
+        Map<String, List<Integer>> genomicLocationToRecordIndices = new HashMap<>();
+        
+        for (int i = 0; i < mutationRecords.size(); i++) {
+            MutationRecord record = mutationRecords.get(i);
+            if (reannotate || annotationNeeded(record)) {
+                recordsToAnnotate.add(record);
+                GenomicLocation location = parseGenomicLocationFromRecord(record, ignoreOriginalGenomicLocation);
+                String locationKey = getGenomicLocationString(location);
+                
+                genomicLocationToRecordIndices.computeIfAbsent(locationKey, k -> new ArrayList<>()).add(i);
             }
         }
-        // sort and partition the genomic locations
-        List<List<GenomicLocation>> partitionedGenomicLocationList = sortAndPartitionMutationRecordsListForPOST(genomicLocations, postIntervalSize);
-
-        Map<String, VariantAnnotation> gnResponseVariantKeyMap = new HashMap<>();
-        int totalVariantsToAnnotateCount = genomicLocations.size();
+        
+        int totalVariantsToAnnotateCount = recordsToAnnotate.size();
         int annotatedVariantsCount = 0;
-        for (List<GenomicLocation> partitionedList : partitionedGenomicLocationList) {
+        List<AnnotatedRecord> annotatedRecords = new ArrayList<>(Collections.nCopies(mutationRecords.size(), null));
+        
+        // Extract genomic locations and sort
+        List<GenomicLocation> genomicLocations = recordsToAnnotate.stream()
+            .map(r -> parseGenomicLocationFromRecord(r, ignoreOriginalGenomicLocation))
+            .collect(Collectors.toList());
+        
+        List<List<GenomicLocation>> partitionedLocations = sortAndPartitionGenomicLocations(
+            genomicLocations, postIntervalSize);
+        
+        // Process each partition
+        for (List<GenomicLocation> locationBatch : partitionedLocations) {
             List<VariantAnnotation> gnResponseList = null;
             Instant startTime = Instant.now();
-            // Get annotations from Genome Nexus and log if server error (e.g VEP is down)
+            
             try {
-                 gnResponseList = apiClient.fetchVariantAnnotationByGenomicLocationPOST(partitionedList,
-                    isoformOverridesSource, tokens, queryFields());
+                gnResponseList = apiClient.fetchVariantAnnotationByGenomicLocationPOST(
+                    locationBatch, isoformOverridesSource, tokens, queryFields());
             } catch (Exception e) {
                 LOG.error("Annotation failed for ALL variants in this partition. " + e.getMessage());
             }
             summaryStatistics.addDuration(Duration.between(startTime, Instant.now()).getSeconds());
-            // Verify annotations coming back from Genome Nexus and log annotation failures (e.g used to be 404s)
+            
             if (gnResponseList != null) {
                 for (VariantAnnotation gnResponse : gnResponseList) {
                     logAnnotationProgress(++annotatedVariantsCount, totalVariantsToAnnotateCount, postIntervalSize);
                     if (!gnResponse.isSuccessfullyAnnotated()) {
-                        LOG.warn("Annotation failed for variant " + gnResponse.getVariant() + (gnResponse.getErrorMessage() != null ? ";" + gnResponse.getErrorMessage() : ""));
+                        LOG.warn("Annotation failed for variant " + gnResponse.getVariant() + 
+                            (gnResponse.getErrorMessage() != null ? ";" + gnResponse.getErrorMessage() : ""));
                     }
-                    gnResponseVariantKeyMap.put(gnResponse.getOriginalVariantQuery(), gnResponse);
-                }
-            }
-        }
-
-        List<AnnotatedRecord> annotatedRecords = new ArrayList<>();
-        // loop through the original mutationRecords (in original sort order) and
-        // create annotated records by merging the responses from gn with their corresponding MAF record
-        for (MutationRecord record : mutationRecords) {
-            String genomicLocation = parseGenomicLocationString(record, ignoreOriginalGenomicLocation);
-            AnnotatedRecord annotatedRecord = new AnnotatedRecord(record);
-            // if not a failed annotation then convert/merge the response from gn with the maf record
-            VariantAnnotation gnResponse = gnResponseVariantKeyMap.get(genomicLocation);
-            if (gnResponse == null || !gnResponse.isSuccessfullyAnnotated()) {
-                if(reannotate || annotationNeeded(record)) {
-                    // only log if record actually attempted annotation
-                    annotatedRecord.setANNOTATION_STATUS("FAILED");
-                    annotatedRecord.setErrorMessage(gnResponse != null && gnResponse.getErrorMessage() != null ? gnResponse.getErrorMessage() : "");
-                    summaryStatistics.addFailedAnnotatedRecordDueToServer(record, annotatedRecord.getErrorMessage(), isoformOverridesSource);
+                    
+                    String locationKey = gnResponse.getOriginalVariantQuery();
+                    List<Integer> recordIndices = genomicLocationToRecordIndices.get(locationKey);
+                    
+                    if (recordIndices != null && !recordIndices.isEmpty() && annotatedRecords.get(recordIndices.getFirst()) == null) {
+                        for (Integer index : recordIndices) {
+                            MutationRecord record = mutationRecords.get(index);
+                            AnnotatedRecord annotatedRecord = new AnnotatedRecord(record);
+                            
+                            if (!gnResponse.isSuccessfullyAnnotated()) {
+                                if (reannotate || annotationNeeded(record)) {
+                                    // only log if record actually attempted annotation
+                                    annotatedRecord = new AnnotatedRecord(record);
+                                    annotatedRecord.setANNOTATION_STATUS("FAILED");
+                                    annotatedRecord.setErrorMessage(gnResponse.getErrorMessage() != null ?
+                                            gnResponse.getErrorMessage() : "");
+                                    summaryStatistics.addFailedAnnotatedRecordDueToServer(
+                                            record, annotatedRecord.getErrorMessage(), isoformOverridesSource);
+                                }
+                            } else {
+                                annotatedRecord = convertResponseToAnnotatedRecord(
+                                    gnResponse, record, replace, stripMatchingBases,
+                                    ignoreOriginalGenomicLocation, addOriginalGenomicLocation, noteColumn, extendedMode);
+                                annotatedRecord.setANNOTATION_STATUS("SUCCESS");
+                                if (summaryStatistics.isFailedAnnotatedRecord(annotatedRecord, record, isoformOverridesSource)) {
+                                    // Log case where annotation comes back from Genome Nexus but still invalid (e.g null variant classification)
+                                    LOG.warn("Annotated record is invalid for variant " + gnResponse.getVariant());
+                                }
+                            }
+                            
+                            annotatedRecords.set(index, annotatedRecord);
+                        }
+                    }
                 }
             } else {
-                annotatedRecord = convertResponseToAnnotatedRecord(gnResponseVariantKeyMap.get(genomicLocation), record, replace, stripMatchingBases, ignoreOriginalGenomicLocation, addOriginalGenomicLocation, noteColumn);
-                annotatedRecord.setANNOTATION_STATUS("SUCCESS"); // annotation status indicates if a response was returned from GN, not whether the annotation is considered valid or not
-                if (summaryStatistics.isFailedAnnotatedRecord(annotatedRecord, record, isoformOverridesSource)) {
-                    // Log case where annotation comes back from Genome Nexus but still invalid (e.g null variant classification)
-                    LOG.warn("Annotated record is invalid for variant " + gnResponseVariantKeyMap.get(genomicLocation).getVariant());
+                // Handle failed batch
+                for (GenomicLocation location : locationBatch) {
+                    String locationKey = getGenomicLocationString(location);
+                    List<Integer> recordIndices = genomicLocationToRecordIndices.get(locationKey);
+                    
+                    if (recordIndices != null && !recordIndices.isEmpty() && annotatedRecords.get(recordIndices.getFirst()) == null) {
+                        for (Integer index : recordIndices) {
+                            MutationRecord record = mutationRecords.get(index);
+                            AnnotatedRecord annotatedRecord = new AnnotatedRecord(record);
+                            annotatedRecord.setANNOTATION_STATUS("FAILED");
+                            annotatedRecord.setErrorMessage("Batch annotation failed");
+                            summaryStatistics.addFailedAnnotatedRecordDueToServer(
+                                record, annotatedRecord.getErrorMessage(), isoformOverridesSource);
+                            
+                            annotatedRecords.set(index, annotatedRecord);
+                        }
+                    }
                 }
             }
-            annotatedRecords.add(annotatedRecord);
+            
+            // clearing references no longer needed
+            if (gnResponseList != null) {
+                gnResponseList.clear();
+            }
+        }
+        
+        for (int i = 0; i < mutationRecords.size(); i++) {
+            if (annotatedRecords.get(i) == null) {
+                annotatedRecords.set(i, new AnnotatedRecord(mutationRecords.get(i)));
+            }
         }
         return annotatedRecords;
     }
 
-    private List<List<GenomicLocation>> sortAndPartitionMutationRecordsListForPOST(List<GenomicLocation> genomicLocations, Integer postIntervalSize) {
-        // sort
-        List<GenomicLocation> sortedGenomicLocations = new ArrayList<>(genomicLocations);
-        Collections.sort(sortedGenomicLocations, GENOMIC_LOCATION_COMPARATOR);
-        // partition
-        int start = 0;
-        int end = postIntervalSize;
-        List<List<GenomicLocation>> genomicLocationPartitionedLists = new ArrayList<>();
-        while(end <= sortedGenomicLocations.size()) {
-            genomicLocationPartitionedLists.add(sortedGenomicLocations.subList(start, end));
-            start = end;
-            end = start + postIntervalSize;
+    private List<List<GenomicLocation>> sortAndPartitionGenomicLocations(
+        List<GenomicLocation> genomicLocations, Integer postIntervalSize) {
+        
+        List<GenomicLocation> sortedLocations = new ArrayList<>(genomicLocations);
+        Collections.sort(sortedLocations, GENOMIC_LOCATION_COMPARATOR);
+        
+        // Partition into batches
+        List<List<GenomicLocation>> partitionedList = new ArrayList<>();
+        for (int start = 0; start < sortedLocations.size(); start += postIntervalSize) {
+            int end = Math.min(start + postIntervalSize, sortedLocations.size());
+            partitionedList.add(sortedLocations.subList(start, end));
         }
-        if (start < sortedGenomicLocations.size()) {
-            genomicLocationPartitionedLists.add(sortedGenomicLocations.subList(start, sortedGenomicLocations.size()));
-        }
-        return genomicLocationPartitionedLists;
+        
+        return partitionedList;
     }
 
     private void logAnnotationProgress(Integer annotatedVariantsCount, Integer totalVariantsToAnnotateCount, Integer intervalSize) {

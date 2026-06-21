@@ -31,7 +31,8 @@
 */
 package org.cbioportal.models;
 
-import java.util.*;
+import java.util.Map;
+
 import joptsimple.internal.Strings;
 
 
@@ -65,6 +66,7 @@ public class AnnotatedRecord extends MutationRecord {
     protected String gnomadAlleleFrequencySAS;
     protected String annotationStatus;
     protected String errorMessage;
+    protected String additionalTranscripts;
 
     public AnnotatedRecord() {
         addAnnotatedFieldsToHeader();
@@ -228,6 +230,7 @@ public class AnnotatedRecord extends MutationRecord {
         this.consequence = additionalProperties.get("Consequence") != null ? additionalProperties.get("Consequence") : "";
         this.proteinPosition = additionalProperties.get("Protein_position") != null ? additionalProperties.get("Protein_position") : "";
         this.exon = additionalProperties.get("exon") != null ? additionalProperties.get("exon") : "";
+        this.additionalTranscripts = additionalProperties.get("Additional_Transcripts") != null ? additionalProperties.get("Additional_Transcripts") : "";
         this.additionalProperties = additionalProperties;
     }
     
@@ -298,14 +301,13 @@ public class AnnotatedRecord extends MutationRecord {
         addAdditionalProperty("SIFT_Score", siftScore);
     }
     
-    public void setMutationAssessorFields(String maFunctionalImpact,
-            String maFunctionalImpactScore,
-            String maLinkMSA,
-            String maLinkPDB) {
-        addAdditionalProperty("MA:FImpact", maFunctionalImpact);
-        addAdditionalProperty("MA:FIS", maFunctionalImpactScore);
-        addAdditionalProperty("MA:link.MSA", maLinkMSA);
-        addAdditionalProperty("MA:link.PDB", maLinkPDB);
+    public void setMutationAssessorFields(String maFunctionalImpactPrediction,
+            String maFunctionalImpactScore, String maMSA, String maMAV, String maSV) {
+        addAdditionalProperty("MutationAssessor_FunctionalImpactPrediction", maFunctionalImpactPrediction);
+        addAdditionalProperty("MutationAssessor_FunctionalImpactScore", maFunctionalImpactScore);
+        addAdditionalProperty("MutationAssessor_MSA", maMSA);
+        addAdditionalProperty("MutationAssessor_MAV", maMAV);
+        addAdditionalProperty("MutationAssessor_SV", maSV);
     }
 
     public void setNucleotideContextFields(String refTri, String varTri) {
@@ -496,6 +498,18 @@ public class AnnotatedRecord extends MutationRecord {
 
     public void setErrorMessage(String errorMessage) {
         this.errorMessage = errorMessage;
+    }
+
+    public String getAdditionalTranscripts() {
+        return this.additionalTranscripts != null ? this.additionalTranscripts : "";
+    }
+
+    public void setAdditionalTranscripts(String additionalTranscripts) {
+        if (!header.contains("Additional_Transcripts")) {
+            header.add("Additional_Transcripts");
+        }
+        this.additionalTranscripts = additionalTranscripts;
+        addAdditionalProperty("Additional_Transcripts", additionalTranscripts);
     }
 
     private void addAnnotatedFieldsToHeader() {

@@ -1,5 +1,5 @@
 # Multi-stage build
-FROM maven:3-eclipse-temurin-21 as build
+FROM maven:3.9.9-eclipse-temurin-21 as build
 
 # Build args
 ARG MAVEN_OPTS=-DskipTests 
@@ -32,8 +32,11 @@ RUN apt-get update && apt-get -y install \
 
 # Copy artifact from build-stage
 COPY --from=build $GN_TARGET/annotationPipeline-*.jar $GN_TARGET/annotationPipeline.jar
+COPY --from=build $GN_HOME/scripts $GN_HOME/scripts
 COPY --from=build $GN_RESOURCES/application.properties.EXAMPLE $GN_RESOURCES/application.properties
 
-WORKDIR $GN_HOME/annotationPipeline/target
+ENV PATH="${PATH}:${GN_HOME}/scripts"
+
+WORKDIR $GN_TARGET
 
 CMD ["java", "-jar", "annotationPipeline.jar"]

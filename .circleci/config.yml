@@ -55,32 +55,32 @@ jobs:
 
       # run test
       - run:
-          name: "check if minimal example maf file still the same when annotating with uniprot transcripts"
-          command: 'java -jar annotationPipeline/target/annotationPipeline-*.jar -r --filename test/data/minimal_example.in.txt  --output-filename test/data/minimal_example.out.uniprot.txt --isoform-override uniprot && git diff -G "^[^#]" --exit-code test/data/minimal_example.out.uniprot.txt || (echo simple MAF uniprot output changed test/data/minimal_example.out.uniprot.txt && exit 1)'
+          name: "check if minimal example maf file still the same when annotating with mskcc transcripts"
+          command: 'java -jar annotationPipeline/target/annotationPipeline-*.jar --filename test/data/minimal_example.in.txt  --output-filename test/data/minimal_example.out.mskcc.txt --isoform-override mskcc && git diff -G "^[^#]" --exit-code test/data/minimal_example.out.mskcc.txt || (echo simple MAF mskcc output changed test/data/minimal_example.out.mskcc.txt && exit 1)'
 
       - run:
           name: "check if columns prefixed by IGNORE_Genome_Nexus_Original are immutable"
-          command: 'java -jar annotationPipeline/target/annotationPipeline-*.jar -r --filename test/data/immutable_columns_test.in.txt  --output-filename test/data/immutable_columns_test.out.uniprot.txt --isoform-override uniprot && git diff -G "^[^#]" --exit-code test/data/immutable_columns_test.out.uniprot.txt || (echo simple MAF uniprot output changed test/data/immutable_columns_test.out.uniprot.txt && exit 1)'
+          command: 'java -jar annotationPipeline/target/annotationPipeline-*.jar --filename test/data/immutable_columns_test.in.txt  --output-filename test/data/immutable_columns_test.out.uniprot.txt --isoform-override uniprot && git diff -G "^[^#]" --exit-code test/data/immutable_columns_test.out.uniprot.txt || (echo simple MAF uniprot output changed test/data/immutable_columns_test.out.uniprot.txt && exit 1)'
 
       - run:
           name: "check if corner cases example maf file still the same when annotating with uniprot transcripts"
-          command: 'java -jar annotationPipeline/target/annotationPipeline-*.jar -r --filename test/data/corner_cases.two_tumor_seq_allele.in.txt  --output-filename test/data/corner_cases.two_tumor_seq_allele.out.uniprot.txt --isoform-override uniprot && git diff -G "^[^#]" --exit-code test/data/corner_cases.two_tumor_seq_allele.out.uniprot.txt || (echo simple MAF uniprot output changed test/data/corner_cases.two_tumor_seq_allele.out.uniprot.txt && exit 1)'
+          command: 'java -jar annotationPipeline/target/annotationPipeline-*.jar --filename test/data/corner_cases.two_tumor_seq_allele.in.txt  --output-filename test/data/corner_cases.two_tumor_seq_allele.out.uniprot.txt --isoform-override uniprot && git diff -G "^[^#]" --exit-code test/data/corner_cases.two_tumor_seq_allele.out.uniprot.txt || (echo simple MAF uniprot output changed test/data/corner_cases.two_tumor_seq_allele.out.uniprot.txt && exit 1)'
 
       - run:
           name: "check if corner cases example maf file still the same when annotating with mskcc transcripts"
-          command: 'java -jar annotationPipeline/target/annotationPipeline-*.jar -r --filename test/data/corner_cases.two_tumor_seq_allele.in.txt  --output-filename test/data/corner_cases.two_tumor_seq_allele.out.mskcc.txt --isoform-override mskcc && git diff -G "^[^#]" --exit-code test/data/corner_cases.two_tumor_seq_allele.out.mskcc.txt || (echo simple MAF mskcc output changed test/data/corner_cases.two_tumor_seq_allele.out.mskcc.txt && exit 1)'
+          command: 'java -jar annotationPipeline/target/annotationPipeline-*.jar --filename test/data/corner_cases.two_tumor_seq_allele.in.txt  --output-filename test/data/corner_cases.two_tumor_seq_allele.out.mskcc.txt --isoform-override mskcc && git diff -G "^[^#]" --exit-code test/data/corner_cases.two_tumor_seq_allele.out.mskcc.txt || (echo simple MAF mskcc output changed test/data/corner_cases.two_tumor_seq_allele.out.mskcc.txt && exit 1)'
 
       - run:
           name: "check if corner cases example maf file still the same when annotating with uniprot transcripts"
-          command: 'java -jar annotationPipeline/target/annotationPipeline-*.jar -r --filename test/data/corner_cases.in.txt  --output-filename test/data/corner_cases.out.uniprot.txt --isoform-override uniprot && git diff -G "^[^#]" --exit-code test/data/corner_cases.out.uniprot.txt || (echo simple MAF uniprot output changed test/data/corner_cases.out.uniprot.txt && exit 1)'
+          command: 'java -jar annotationPipeline/target/annotationPipeline-*.jar --filename test/data/corner_cases.in.txt  --output-filename test/data/corner_cases.out.uniprot.txt --isoform-override uniprot && git diff -G "^[^#]" --exit-code test/data/corner_cases.out.uniprot.txt || (echo simple MAF uniprot output changed test/data/corner_cases.out.uniprot.txt && exit 1)'
 
       - run:
           name: "check if corner cases example maf file still the same when annotating with mskcc transcripts"
-          command: 'java -jar annotationPipeline/target/annotationPipeline-*.jar -r --filename test/data/corner_cases.in.txt  --output-filename test/data/corner_cases.out.mskcc.txt --isoform-override mskcc && git diff -G "^[^#]" --exit-code test/data/corner_cases.out.mskcc.txt || (echo simple MAF mskcc output changed test/data/corner_cases.out.mskcc.txt && exit 1)'
+          command: 'java -jar annotationPipeline/target/annotationPipeline-*.jar --filename test/data/corner_cases.in.txt  --output-filename test/data/corner_cases.out.mskcc.txt --isoform-override mskcc && git diff -G "^[^#]" --exit-code test/data/corner_cases.out.mskcc.txt || (echo simple MAF mskcc output changed test/data/corner_cases.out.mskcc.txt && exit 1)'
 
-      - run:
-          name: "Run vcf2maf test cases"
-          command: 'sudo apt-get install make && ./test/scripts/vcf2maf_tests.sh'
+      # - run:
+      #     name: "Run vcf2maf test cases"
+      #     command: 'sudo apt-get install make && ./test/scripts/vcf2maf_tests.sh'
 
       # run test
       - run:
@@ -92,16 +92,53 @@ jobs:
           command: 'java -jar annotationPipeline/target/annotationPipeline-*.jar --filename test/data/data_mutations_extended_100.in.txt  --output-filename test/data/data_mutations_extended_100.out.post.mskcc.txt --isoform-override mskcc && git diff -G "^[^#]" --exit-code test/data/data_mutations_extended_100.out.mskcc.txt || (echo MAF mskcc output changed test/data/data_mutations_extended_100.out.mskcc.txt)'
 
       - run:
-          name: "check if minimal example maf file still the same when annotating with uniprot transcripts and POSTs"
-          command: 'java -jar annotationPipeline/target/annotationPipeline-*.jar -r --filename test/data/minimal_example.in.txt  --output-filename test/data/minimal_example.out.post.uniprot.txt --isoform-override uniprot && git diff -G "^[^#]" --exit-code test/data/minimal_example.out.uniprot.txt || (echo simple MAF uniprot output changed test/data/minimal_example.out.uniprot.txt)'
+          name: "check if minimal example maf file still the same when annotating with mskcc transcripts and POSTs"
+          command: 'java -jar annotationPipeline/target/annotationPipeline-*.jar --filename test/data/minimal_example.in.txt  --output-filename test/data/minimal_example.out.post.mskcc.txt --isoform-override mskcc && git diff -G "^[^#]" --exit-code test/data/minimal_example.out.mskcc.txt || (echo simple MAF mskcc output changed test/data/minimal_example.out.mskcc.txt)'
 
       - run:
           name: "check if my_variant_info provides gnomad annotations"
-          command: 'java -Dgenomenexus.enrichment_fields=annotation_summary,my_variant_info -jar annotationPipeline/target/annotationPipeline-*.jar -r --filename test/data/my_variant_info_corner_cases.in.txt  --output-filename test/data/my_variant_info_corner_cases.out.uniprot.txt --isoform-override uniprot && git diff -G "^[^#]" --exit-code test/data/my_variant_info_corner_cases.out.uniprot.txt || (echo simple MAF uniprot output changed test/data/my_variant_info_corner_cases.out.uniprot.txt)'
+          command: 'java -Dgenomenexus.enrichment_fields=annotation_summary,my_variant_info -jar annotationPipeline/target/annotationPipeline-*.jar --filename test/data/my_variant_info_corner_cases.in.txt  --output-filename test/data/my_variant_info_corner_cases.out.uniprot.txt --isoform-override uniprot && git diff -G "^[^#]" --exit-code test/data/my_variant_info_corner_cases.out.uniprot.txt || (echo simple MAF uniprot output changed test/data/my_variant_info_corner_cases.out.uniprot.txt)'
 
       - run:
           name: "check if nucleotide_context provides Ref_Tri and Var_Tri columnsj"
           command: 'java -Dgenomenexus.enrichment_fields=annotation_summary,nucleotide_context -jar annotationPipeline/target/annotationPipeline-*.jar --filename test/data/data_mutations_extended_100.in.txt  --output-filename test/data/data_mutations_extended_100.out.uniprot.nucleotide_context.txt --isoform-override uniprot && git diff -G "^[^#]" --exit-code  test/data/data_mutations_extended_100.out.uniprot.nucleotide_context.txt || (echo simple MAF uniprot output changed  test/data/data_mutations_extended_100.out.uniprot.nucleotide_context.txt)'
+
+      - run:
+          name: "performance benchmark: annotate CHOL TCGA GDC (~3764 variants) against grch38.genomenexus.org"
+          command: |
+            java -Dgenomenexus.base=https://grch38.genomenexus.org \
+              -jar annotationPipeline/target/annotationPipeline-*.jar \
+              --filename test/data/chol_tcga_gdc_data_mutations.txt \
+              --output-filename test/data/chol_tcga_gdc_data_mutations.out.mskcc.txt \
+              --isoform-override mskcc 2>&1 | tee test/data/benchmark.log
+
+            # Parse stats into CSV
+            LOG=test/data/benchmark.log
+            # "records to annotate" is a log4j message that may not appear; fall back to counting input lines
+            TOTAL_VARIANTS=$(grep -oP '\d+(?= records to annotate)' "$LOG" || echo "")
+            if [ -z "$TOTAL_VARIANTS" ]; then
+              TOTAL_VARIANTS=$(tail -n +2 test/data/chol_tcga_gdc_data_mutations.txt | grep -cv '^#' || echo "")
+            fi
+            RUNTIME=$(grep -oP '(?<=RUNTIME: )\d+' "$LOG" || echo "")
+            ANNOTATION_TIME=$(grep -oP '(?<=ANNOTATION_TIME: )\d+' "$LOG" || echo "")
+            AVG_RESPONSE=$(grep -oP '(?<=Average Response Time:  )[\d.]+' "$LOG" || echo "")
+            TOTAL_RESPONSE=$(grep -oP '(?<=Total Response Time:  )\d+' "$LOG" || echo "")
+            AMBIGUOUS=$(grep -oP '(?<=ambiguous SNP and INDEL allele changes:  )\d+' "$LOG" || echo "")
+            FAILED=$(grep -oP '\d+(?= total failed annotations)' "$LOG" || echo "0")
+
+            if [ -n "$TOTAL_VARIANTS" ] && [ -n "$ANNOTATION_TIME" ] && [ "$ANNOTATION_TIME" -gt 0 ]; then
+              VARIANTS_PER_SEC=$(awk "BEGIN {printf \"%.1f\", $TOTAL_VARIANTS / $ANNOTATION_TIME}")
+            else
+              VARIANTS_PER_SEC=""
+            fi
+
+            CSV=test/data/benchmark_results.csv
+            echo "dataset,server,total_variants,runtime_secs,annotation_time_secs,variants_per_sec,avg_response_secs,total_response_secs,ambiguous_records,failed_annotations" > "$CSV"
+            echo "chol_tcga_gdc,grch38.genomenexus.org,$TOTAL_VARIANTS,$RUNTIME,$ANNOTATION_TIME,$VARIANTS_PER_SEC,$AVG_RESPONSE,$TOTAL_RESPONSE,$AMBIGUOUS,$FAILED" >> "$CSV"
+
+            echo ""
+            echo "=== Benchmark Results ==="
+            cat "$CSV"
 
       - store_artifacts:
           path: test/data

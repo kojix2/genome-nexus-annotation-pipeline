@@ -35,12 +35,13 @@ public class AnnotateSubcommand implements Subcommand {
                 .addOption("t", "output-format", true, "extended, minimal or a file path which includes output format (FORMAT EXAMPLE: Chromosome,Hugo_Symbol,Entrez_Gene_Id,Center,NCBI_Build)")
                 .addOption("i", "isoform-override", true, "Isoform Overrides (mskcc or uniprot)")
                 .addOption("e", "error-report-location", true, "Error report filename (including path)")
-                .addOption("r", "replace-symbol-entrez", false, "Replace gene symbols and entrez id with what is provided by annotator")
+                .addOption("r", "replace-symbol-entrez", true, "Replace gene symbols and entrez id with what is provided by annotator, by default is set to true")
                 .addOption("p", "post-interval-size", true, "Number of records to make POST requests to Genome Nexus with at a time")
                 .addOption("s", "strip-matching-bases", true, "Strip matching allele bases, options are: first,all,none")
                 .addOption("d", "ignore-original-genomic-location", false, "Ignore original genomic location in input file (columns with prefix 'IGNORE_Genome_Nexus_Original_').")
                 .addOption("a", "add-original-genomic-location", false, "Add original genomic location input columns in the output, name columns with prefix 'IGNORE_Genome_Nexus_Original_')")
-                .addOption("n", "note-column", false, "Add 'Genomic Location Explanation' column for variants that have altered genomic location");
+                .addOption("n", "note-column", false, "Add 'Genomic Location Explanation' column for variants that have altered genomic location")
+                .addOption("m", "mode", true, "Mode of annotation, currently only accepts 'extended' to include 'Additional_Transcripts' column");
 
         return gnuOptions;
     }
